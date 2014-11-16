@@ -137,3 +137,4 @@ names(weekAverage) <- c("interval", "weekdayBool", "average")
 
 qplot(interval, average, data = weekAverage, geom = "line", color = weekdayBool, facets= weekdayBool ~ .)
 ```
+
