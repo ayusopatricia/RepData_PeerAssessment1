@@ -8,18 +8,132 @@ output:
 
 ## Loading and preprocessing the data
 
+Loading the data & Processing and transforming the data.
 
+```{r}
+# Uncompressing activity.zip file
+unzip("activity.zip")
+
+# Loading Data and processing the data
+data <- read.csv("activity.csv", colClasses = c(NA,"Date",NA), na.strings = "NA")
+```
 
 ## What is mean total number of steps taken per day?
 
+1. Make a histogram of the total number of steps taken each day. 
 
+```{r, echo=FALSE}
+# Loading ggplot2 library
+library(ggplot2)
+
+# Plotting a histogram of the total number of steps taken each day
+qplot(date, steps, data=data, stat="summary", fun.y="sum", geom="bar")
+```
+
+2. Calculate and report the *mean* and *median* total number of steps taken per day.
+
+```{r}
+# Calculating the mean & median of total number of steps taken per day
+mean <- aggregate(data$steps, by = list(data$date), FUN=mean, na.rm = TRUE)
+median <- aggregate(data$steps, by = list(data$date), FUN=median, na.rm = TRUE)
+
+# Showing the results merged the first column is the Date the second the Mean and the third is the Median
+merge(mean, median, by = "Group.1")
+```
 
 ## What is the average daily activity pattern?
 
+1. Make a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis).
 
+```{r, echo=FALSE}
+# Getting an array of the average number of steps taken by intervals 
+average <- tapply(data$steps, data$interval, FUN=mean, na.rm=TRUE)
+
+# Getting a vector of unique intervals
+uInterval <- unique(data$interval)
+
+# Plotting of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+plot(uInterval, average, type="l", xlab= "5-minute interval across all days", ylab= "Average of steps", lwd=2)
+```
+
+2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+```{r}
+# Getting the maximum number of steps on average across all the days
+maxAve <- max(average)
+
+# Getting the 5-minute interval of the maximum number of steps on average across all the days
+averageDF <- data.frame(average)
+averageDF[averageDF[1] == maxAve, ]
+```
+
+The 5-minute interval with the maximum number of steps on average across all the days in the dataset is *835*.
 
 ## Imputing missing values
 
+1. Calculate and report the total number of missing values in the dataset.
 
+```{r}
+# Getting total number of missing values in the dataset
+sum(is.na(data$steps))
+```
+
+2. Devise a strategy for filling in all of the missing values in the dataset. Creating a new dataset that is equal to the original dataset but with the missing data filled in
+
+```{r}
+# Clonning the original dataset
+dataNoNA <- data
+
+# Replacing the NAs by the value of the mean in the corresponding interval
+dataNoNAFaverage <- aggregate(data$steps, by = list(data$interval), FUN=mean, na.rm=TRUE)
+for (i in 1:nrow(dataNoNA)){
+  if (is.na(dataNoNA$steps[i])) { 
+    dataNoNA$steps[i] <- dataNoNAFaverage[dataNoNAFaverage$Group.1 == as.character(dataNoNA$interval[i]), "x"]
+  }
+}
+```
+
+3. Make a histogram of the total number of steps taken each day and calculate and report the *mean* and *median* total number of steps taken per day.
+
+```{r}
+# Plotting a histogram of the total number of steps taken each day
+qplot(date, steps, data=dataNoNA, stat="summary", fun.y="sum", geom="bar")
+
+# Calculating the mean & median of total number of steps taken per day
+meanNoNA <- aggregate(dataNoNA$steps, by = list(dataNoNA$date), FUN=mean, na.rm = TRUE)
+medianNoNA <- aggregate(dataNoNA$steps, by = list(dataNoNA$date), FUN=median, na.rm = TRUE)
+
+# Showing the results merged the first column is the Date the second the Mean and the third is the Median
+merge(meanNoNA, medianNoNA, by = "Group.1")
+```
+
+Do these values differ from the estimates from the first part of the assignment?
+
+Yes, the differ from the estimates from the first part of the assignment, there is no missing values so the data is "completed"
+
+What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+There is a strong impact into the median calculation because previuosly we had NA values that are not in the new results; and a slightly impact into the mean values.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{r}
+# Getting weekdays
+dataNoNA$weekday <- weekdays(dataNoNA$date);
+
+for (i in 1:nrow(dataNoNA)){
+  if (dataNoNA$weekday[i] == "Saturday" | dataNoNA$weekday[i] == "Sunday" ) { 
+    dataNoNA$weekdayBool = FALSE
+  } else {
+    dataNoNA$weekdayBool = TRUE
+  }
+}
+
+dataNoNA$weekdayBool <- as.factor(dataNoNA$weekdayBool);
+
+weekAverage <- aggregate(dataNoNA$steps, by=list(dataNoNA$interval, dataNoNA$weekdayBool), FUN=mean, na.rm=TRUE)
+
+names(weekAverage) <- c("interval", "weekdayBool", "average")
+
+qplot(interval, average, data = weekAverage, geom = "line", color = weekdayBool, facets= weekdayBool ~ .)
+```
